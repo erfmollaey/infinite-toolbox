@@ -78,7 +78,7 @@ def parse_env_file(discovered: DiscoveredFile) -> EnvFile:
         return env_file
 
     try:
-        text = raw.decode("utf-8")
+        text = raw.decode("utf-8-sig")  # handles UTF-8 BOM automatically
     except UnicodeDecodeError:
         env_file.error = "not valid UTF-8; skipping"
         return env_file

@@ -7,11 +7,16 @@ Exit codes (also used by the individual commands):
   differences with ``sync`` in dry-run mode). With ``--strict``, warnings
   also fail.
 * ``2`` — operational error (bad path, unreadable input, refusal to
-  overwrite, missing file).
+  overwrite, missing file, or unsafe target).
 """
 
 from __future__ import annotations
 
+import contextlib
+import json
+import os
+import stat
+import tempfile
 from pathlib import Path
 from typing import Annotated
 
@@ -30,12 +35,106 @@ EXIT_OK = 0
 EXIT_ISSUES = 1
 EXIT_ERROR = 2
 
+# JSON output schema version
+JSON_SCHEMA_VERSION = "1.0.0"
+
 app = typer.Typer(
     name="envguard",
     help="Inspect environment-variable configuration and prevent configuration mistakes.",
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+def _write_safe_target(path: Path, content: str) -> None:
+    """Safely replace a file's content, never following symlinks.
+
+    Creates a temporary file in the same directory and atomically replaces
+    the target via os.replace. Uses os.lstat to reject symlinks and
+    non-regular files before any write.
+
+    Raises OSError on any unsafe condition or write failure.
+    """
+    # Reject symlinks and non-regular files BEFORE any write
+    try:
+        st = os.lstat(path)
+    except OSError:
+        # File doesn't exist yet — that's fine for creation
+        pass
+    else:
+        if stat.S_ISLNK(st.st_mode):
+            raise OSError(f"refusing to write through symlink: {path}")
+        if not stat.S_ISREG(st.st_mode):
+            raise OSError(f"refusing to write non-regular file: {path}")
+
+    # Atomic write via temp file + os.replace
+    dir_path = str(path.parent)
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, prefix=".envguard-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+        os.replace(tmp_path, str(path))
+    except BaseException:
+        # Clean up temp file on any failure
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
+
+
+def _append_safe_target(path: Path, lines: list[str]) -> None:
+    """Safely append lines to a file, never following symlinks.
+
+    Uses os.open with O_NOFOLLOW to ensure we never follow a symlink.
+    Verifies the target is a regular file before appending.
+
+    Raises OSError on any unsafe condition or write failure.
+    """
+    # Reject symlinks and non-regular files BEFORE any write
+    try:
+        st = os.lstat(path)
+    except OSError as exc:
+        raise OSError(f"target does not exist: {path}") from exc
+
+    if stat.S_ISLNK(st.st_mode):
+        raise OSError(f"refusing to append through symlink: {path}")
+    if not stat.S_ISREG(st.st_mode):
+        raise OSError(f"refusing to append to non-regular file: {path}")
+
+    # Open with O_NOFOLLOW to prevent any TOCTOU race
+    try:
+        fd = os.open(
+            str(path),
+            os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW,
+            0o644,
+        )
+    except OSError as exc:
+        raise OSError(f"could not open target safely: {path}") from exc
+
+    try:
+        with os.fdopen(fd, "a", encoding="utf-8") as handle:
+            for line in lines:
+                handle.write(line)
+    except BaseException:
+        # fdopen closes the fd on error, but be safe
+        with contextlib.suppress(OSError):
+            os.close(fd)
+        raise
+
+
+def _is_template_target(target_name: str) -> bool:
+    """True when a target file name looks like a template."""
+    return target_name.startswith(".env") and any(
+        suffix in target_name for suffix in (".example", ".sample", ".template", ".dist")
+    )
+
+
+def _exists_and_is_regular(path: Path) -> bool:
+    """True if path exists and is a regular file (no symlink follow)."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    return stat.S_ISREG(st.st_mode)
 
 
 def _version_callback(value: bool) -> None:
@@ -47,6 +146,85 @@ def _version_callback(value: bool) -> None:
 def _fail(message: str) -> None:
     out.console.print(f"[red]error:[/red] {escape(message)}")
     raise typer.Exit(EXIT_ERROR)
+
+
+def _to_json_output(
+    report: AnalysisReport,
+    env_files: list[EnvFile],
+    scan: SourceScanResult,
+    root: Path,
+) -> dict[str, object]:
+    """Convert analysis results to JSON-safe dictionary.
+
+    Never includes environment values, absolute paths, or sensitive data.
+    Paths are relative to the project root.
+    """
+    findings_json: list[dict[str, object]] = []
+    for finding in report.findings:
+        finding_dict: dict[str, object] = {
+            "code": finding.code,
+            "severity": finding.severity,
+            "message": finding.message,
+        }
+        if finding.hint:
+            finding_dict["hint"] = finding.hint
+
+        # Extract file and variable context where applicable
+        message = finding.message
+        if "referenced in code but missing from" in message:
+            # Extract variable names from message
+            parts = message.split(":", 1)
+            if len(parts) == 2:
+                vars_part = parts[1].strip()
+                variables = [v.strip() for v in vars_part.split(",")]
+                finding_dict["variables"] = variables
+        elif "not defined in" in message or "missing from" in message:
+            # Extract file reference
+            for _i, part in enumerate(message.split()):
+                if part.startswith("."):
+                    finding_dict["file"] = part.rstrip(":")
+                    break
+
+        findings_json.append(finding_dict)
+
+    return {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "tool": "envguard",
+        "version": __version__,
+        "status": "error" if report.errors else ("warning" if report.warnings else "ok"),
+        "summary": {
+            "errors": len(report.errors),
+            "warnings": len(report.warnings),
+            "info": len(report.infos),
+        },
+        "findings": findings_json,
+        "referenced_variables": [
+            {"name": name, "files": files} for name, files in sorted(report.referenced.items())
+        ],
+        "env_files": [
+            {
+                "path": f.relative_path,
+                "kind": f.kind,
+                "variables": len(f.names),
+                "notes": [
+                    f.error
+                    if f.error
+                    else (
+                        f"malformed: {len(f.issues)} line(s)"
+                        if f.issues
+                        else (
+                            f"non-empty values: {f.populated_values}"
+                            if f.populated_values and f.is_template
+                            else ""
+                        )
+                    )
+                ],
+            }
+            for f in env_files
+            if f.relative_path  # skip any with empty paths
+        ],
+        "skipped_sources": [{"path": path, "reason": reason} for path, reason in scan.skipped],
+    }
 
 
 def _resolve_root(path: Path) -> Path:
@@ -171,12 +349,24 @@ def check(
     strict: Annotated[
         bool, typer.Option("--strict", help="Exit non-zero on warnings as well as errors.")
     ] = False,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output results as machine-readable JSON to stdout.")
+    ] = False,
 ) -> None:
     """Detect missing variables and configuration inconsistencies."""
     root = _resolve_root(path)
-    out.print_header(root, "check")
     env_files, scan, report = _run_analysis(root)
 
+    if json_output:
+        # JSON mode: produce single JSON document on stdout, no Rich markup
+        json_data = _to_json_output(report, env_files, scan, root)
+        out.console.file.write(json.dumps(json_data, indent=2))
+        out.console.file.write("\n")
+        out.console.file.flush()
+        _check_exit(report, strict)
+        return
+
+    out.print_header(root, "check")
     out.print_env_files(env_files)
     out.print_referenced(scan)
     out.console.print("\n[bold]Findings[/bold]")
@@ -205,7 +395,7 @@ def init(
         _fail("--output must be a plain file name inside the project (e.g. .env.example)")
 
     target = root / output
-    if target.exists() and not force:
+    if _exists_and_is_regular(target) and not force:
         _fail(f"{output} already exists; use --force to overwrite it")
 
     env_files = _load_env_files(root)
@@ -224,7 +414,7 @@ def init(
 
     content = "".join(f"{name}=\n" for name in sorted(names))
     try:
-        target.write_text(content, encoding="utf-8")
+        _write_safe_target(target, content)
     except OSError as exc:
         _fail(f"could not write {output}: {exc.strerror or exc}")
     out.console.print(f"[green]Created[/green] {escape(output)} with {len(names)} name(s):")
@@ -267,10 +457,20 @@ def sync(
         _fail("--source and --target must be different files")
 
     src_path, dst_path = root / source, root / target
-    if not src_path.is_file():
-        _fail(f"{source} not found; create it first (e.g. `envguard init`)")
-    if not dst_path.is_file():
-        _fail(f"{target} not found; create it first (e.g. `envguard init`)")
+
+    # F-02: validate target is a template BEFORE checking existence
+    # This prevents accidentally targeting a real .env file
+    if not _is_template_target(target):
+        _fail(
+            f"--target must be a template file (e.g. .env.example, .env.sample); "
+            f"{target} does not look like a template. "
+            "This prevents accidentally modifying a real environment file."
+        )
+
+    if not _exists_and_is_regular(src_path):
+        _fail(f"{source} not found or not a regular file; create it first (e.g. `envguard init`)")
+    if not _exists_and_is_regular(dst_path):
+        _fail(f"{target} not found or not a regular file; create it first (e.g. `envguard init`)")
 
     src = parse_env_file(DiscoveredFile(path=src_path, relative_path=source))
     dst = parse_env_file(DiscoveredFile(path=dst_path, relative_path=target))
@@ -308,14 +508,13 @@ def sync(
         raise typer.Exit(EXIT_ISSUES)
 
     try:
-        trailing_newline = True
-        if dst_path.stat().st_size:
-            trailing_newline = dst_path.read_bytes().endswith(b"\n")
-        with dst_path.open("a", encoding="utf-8") as handle:
-            if not trailing_newline:
-                handle.write("\n")
-            for name in missing:
-                handle.write(f"{name}=\n")
+        # Build the lines to append (including trailing newline fix)
+        lines_to_write: list[str] = []
+        if dst_path.stat().st_size and not dst_path.read_bytes().endswith(b"\n"):
+            lines_to_write.append("\n")
+        for name in missing:
+            lines_to_write.append(f"{name}=\n")
+        _append_safe_target(dst_path, lines_to_write)
     except OSError as exc:
         _fail(f"could not write {target}: {exc.strerror or exc}")
 

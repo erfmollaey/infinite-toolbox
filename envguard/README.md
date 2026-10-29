@@ -17,13 +17,25 @@ Security and developer experience are treated as equal requirements: EnvGuard ne
 
 | Area | Status |
 | --- | --- |
+| License | MIT (see [LICENSE](LICENSE)) |
+
+## License
+
+EnvGuard is released under the [MIT License](../envguard/LICENSE). See that file for the full license text and copyright notice.
+
+> Infinite Toolbox is a monorepo containing multiple independent tools. Each tool may have its own license terms. The presence of this MIT license file applies to EnvGuard only and does not imply any particular license for other tools in the repository.
+
+| Area | Status |
+| --- | --- |
 | `.env` / `.env.example` / variant discovery | ✅ implemented |
 | Variable-name extraction (values never read into reports) | ✅ implemented |
 | Python / JS / TS / Next.js reference detection | ✅ implemented |
 | `check`, `init`, `sync`, `scan`, `doctor` | ✅ implemented |
 | Git exposure classification (tracked / ignored / untracked / unknown) | ✅ implemented |
 | CI-friendly exit codes + `--strict` | ✅ implemented |
-| JSON output, custom required-variable annotations, pre-commit hook | 🗓 planned |
+| JSON output (`check --json`) | ✅ implemented |
+| GitHub Actions CI workflow | ✅ implemented |
+| Custom required-variable annotations, pre-commit hook | 🗓 planned |
 
 ## Use cases
 
@@ -48,6 +60,13 @@ envguard --version
 ```
 
 Runtime dependencies are only **Typer** and **Rich**.
+
+## Security
+
+- **Values are never printed** — not in reports, hints, exceptions, or debug output. The parser extracts names and counts non-empty values without ever handing values to the reporting layer.
+- **Write operations never follow symlinks.** `sync --apply` and `init --force` reject symlinked targets.
+- **Target validation.** `sync --apply` rejects targets that do not look like templates (`.env.example`, `.env.sample`, `.env.template`, `.env.dist`) to prevent accidentally modifying a real `.env` file.
+- **JSON output** (`check --json`) emits structured data suitable for CI, with no secret values.
 
 ## Commands
 
@@ -89,6 +108,80 @@ Summary: 2 error(s), 1 warning(s), 1 info
 ```
 
 Exit code: `1` (errors found). Add `--strict` to also fail on warnings.
+
+#### Machine-readable JSON output
+
+Use `--json` to emit a machine-readable JSON document to stdout instead of the human-readable report:
+
+```bash
+envguard check --json /path/to/project
+```
+
+**Schema version:** `1.0.0`
+
+**Example output:**
+
+```json
+{
+  "schema_version": "1.0.0",
+  "tool": "envguard",
+  "version": "0.1.0",
+  "status": "error",
+  "summary": {
+    "errors": 1,
+    "warnings": 0,
+    "info": 0
+  },
+  "findings": [
+    {
+      "code": "missing-from-template",
+      "severity": "error",
+      "message": "1 variable(s) referenced in code but missing from .env.example: API_KEY",
+      "hint": "Document each variable in the template, or remove the unused code reference.",
+      "variables": ["API_KEY"]
+    }
+  ],
+  "referenced_variables": [
+    {"name": "API_KEY", "files": ["src/app.py"]}
+  ],
+  "env_files": [
+    {"path": ".env", "kind": "environment", "variables": 1, "notes": [""]},
+    {"path": ".env.example", "kind": "template", "variables": 0, "notes": [""]}
+  ],
+  "skipped_sources": []
+}
+```
+
+**JSON fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `schema_version` | string | Schema version for future evolution |
+| `tool` | string | Always "envguard" |
+| `version` | string | EnvGuard version |
+| `status` | string | "ok", "warning", or "error" |
+| `summary` | object | Counts by severity |
+| `findings` | array | Finding objects with `code`, `severity`, `message`, optional `hint`, `file`, `variables` |
+| `referenced_variables` | array | Variables referenced in code with source files |
+| `env_files` | array | Discovered environment files |
+| `skipped_sources` | array | Source files that could not be read |
+
+**Important:** JSON output never contains environment variable values, absolute paths, or secret data. Exit codes are identical to human-readable mode.
+
+**Finding codes are stable and documented:**
+
+| Code | Severity | Description |
+|------|----------|-------------|
+| `missing-from-template` | error | Variable referenced in code but not in the template |
+| `missing-from-env` | error | Variable referenced in code but not in the real `.env` file |
+| `unused-in-template` | warning | Variable in template with no code reference (may be intentional) |
+| `nextpublic` | error | `NEXT_PUBLIC_*` variable found in a real `.env` file |
+| `public-vars` | info | `NEXT_PUBLIC_*` variables found anywhere |
+| `no-template` | warning | No template file found |
+| `no-real-env` | warning | No real `.env` file found |
+| `env-file-not-ignored` | warning | Real `.env` not in `.gitignore` |
+| `env-file-tracked` | error | Real `.env` tracked by Git |
+| `template-populated` | warning | Template contains non-empty values |
 
 ### `envguard init [PATH]`
 
@@ -177,6 +270,61 @@ Verdict: UNSAFE configuration — fix the errors above.
 | `2` | Operational error: bad path, missing/unreadable file, refusal to overwrite without `--force` |
 | `2` | Invoking `envguard` with no subcommand (help is printed) |
 
+## CI integration
+
+### GitHub Actions example
+
+The repository includes a GitHub Actions workflow (`.github/workflows/envguard.yml`) that runs EnvGuard's own quality checks. To use EnvGuard to check **another project's** environment configuration in CI:
+
+```yaml
+# In your project's .github/workflows/env-check.yml
+name: Environment check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  envguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install EnvGuard
+        run: pip install envguard
+
+      - name: Check environment configuration
+        run: envguard check --strict
+        # Or for JSON output suitable for programmatic processing:
+        # run: envguard check --json --strict
+```
+
+**Important distinction:**
+
+- **EnvGuard's own CI** (`.github/workflows/envguard.yml`): Runs EnvGuard's test suite, linting, formatting, type checking, and build validation. This validates EnvGuard itself.
+- **Using EnvGuard in your project's CI**: Installs EnvGuard as a tool and runs it against your project's source code to validate your environment configuration. This validates your project.
+
+### Exit codes for CI
+
+| Code | Meaning | CI action |
+|------|----------|-----------|
+| `0` | Success, no findings | Pass |
+| `1` | Findings found (errors or warnings with `--strict`) | Fail |
+| `2` | Operational error (bad path, missing file, etc.) | Fail |
+
+Use `--strict` to treat warnings as failures in CI:
+
+```bash
+envguard check --strict   # Fail on both errors and warnings
+envguard check --json --strict  # JSON output, fail on warnings
+```
+
 ## Supported detection patterns
 
 | Language | Patterns |
@@ -192,10 +340,12 @@ Environment-file discovery covers `.env`, `.env.local`, `.env.example`, `.env.sa
 - **Values are never printed** — not in reports, hints, exceptions, or debug output. The parser extracts names and counts non-empty values without ever handing values to the reporting layer.
 - **Values never enter test snapshots or assertion messages.** Test fixtures use obvious placeholders (`sk-test-DO-NOT-LEAK-12345`) and the suite asserts these never appear in CLI output.
 - **Nothing leaves your machine.** No network access, no telemetry, no persistence outside your project.
-- **`.gitignore` is respected** and `.git`, `.venv`, `node_modules`, build outputs, and caches are never traversed; symlinks are not followed.
+- **Write operations never follow symlinks.** `sync --apply` and `init --force` reject symlinked targets, dangling symlinks, and non-regular files (FIFOs, directories). When Git is available, `.gitignore` is respected exactly via `git ls-files`; in the non-Git fallback walk, `.gitignore` is **not** applied. Symlinked directories are never traversed during discovery.
+- **Environment-file discovery is bounded** to 4 directory levels below the project root (`ENV_FILE_MAX_DEPTH = 4`); deeper `.env` variants are not found.
 - **Non-destructive by default.** `check`, `scan`, and `doctor` never write; `sync` requires `--apply`; `init` refuses to overwrite without `--force`; Git history is never modified and nothing is ever staged or committed.
 - **Failure is never reported as safety.** When Git cannot answer (no repository, permission error, Git missing), the state is `unknown` with the reason shown — never "safe" or "untracked".
 - **`NEXT_PUBLIC_*` is always flagged** as browser-exposed configuration, regardless of where it appears.
+- **Target validation.** `sync --apply` rejects targets that do not look like templates (`.env.example`, `.env.sample`, `.env.template`, `.env.dist`) to prevent accidentally modifying a real `.env` file. Use `--allow-non-template` only when you intentionally target a non-template file.
 
 ## Limitations
 
@@ -204,6 +354,63 @@ Environment-file discovery covers `.env`, `.env.local`, `.env.example`, `.env.sa
 - Multi-line quoted values in environment files are not parsed as continuations (the first line's name is still captured; following lines are reported as malformed).
 - Git checks cover the repository you run EnvGuard in; worktrees/submodules are inspected as their own repositories.
 - The scanner is best-effort detection, **not a guarantee** that all secrets or all configuration problems have been found.
+- Environment-file discovery is limited to 4 directory levels below the project root. Deeper `.env` variants are not found.
+- In non-Git projects, the fallback source walk does not apply `.gitignore`; files that would be ignored in a Git repository may still be scanned.
+
+## CI integration
+
+### GitHub Actions example
+
+The repository includes a GitHub Actions workflow (`.github/workflows/envguard.yml`) that runs EnvGuard's own quality checks. To use EnvGuard to check **another project's** environment configuration in CI:
+
+```yaml
+# In your project's .github/workflows/env-check.yml
+name: Environment check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  envguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install EnvGuard
+        run: pip install envguard
+
+      - name: Check environment configuration
+        run: envguard check --strict
+        # Or for JSON output suitable for programmatic processing:
+        # run: envguard check --json --strict
+```
+
+**Important distinction:**
+
+- **EnvGuard's own CI** (`.github/workflows/envguard.yml`): Runs EnvGuard's test suite, linting, formatting, type checking, and build validation. This validates EnvGuard itself.
+- **Using EnvGuard in your project's CI**: Installs EnvGuard as a tool and runs it against your project's source code to validate your environment configuration. This validates your project.
+
+### Exit codes for CI
+
+| Code | Meaning | CI action |
+|------|----------|-----------|
+| `0` | Success, no findings | Pass |
+| `1` | Findings found (errors or warnings with `--strict`) | Fail |
+| `2` | Operational error (bad path, missing file, etc.) | Fail |
+
+Use `--strict` to treat warnings as failures in CI:
+
+```bash
+envguard check --strict   # Fail on both errors and warnings
+envguard check --json --strict  # JSON output, fail on warnings
+```
 
 ## Development
 

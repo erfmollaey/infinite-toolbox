@@ -72,6 +72,18 @@ def print_findings(findings: list[Finding]) -> None:
             console.print(f"         [dim]{escape(finding.hint)}[/dim]")
 
 
+def print_skipped_sources(skipped: list[tuple[str, str]]) -> None:
+    """Report source files that could not be read during scanning."""
+    if not skipped:
+        return
+    console.print(f"\n[bold]Skipped source files[/bold] ({len(skipped)}):")
+    for relative_path, reason in skipped:
+        console.print(f"  [yellow]{escape(relative_path)}[/yellow] — {escape(reason)}")
+    console.print(
+        "[dim]These files were not scanned; references inside them were not detected.[/dim]"
+    )
+
+
 def print_referenced(scan: SourceScanResult) -> None:
     variables = scan.variables
     if not variables:

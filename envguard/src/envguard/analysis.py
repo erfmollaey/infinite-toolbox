@@ -170,7 +170,19 @@ def analyze(
                 )
             )
 
-    if not referenced:
+    # 6. Report skipped/unreadable source files
+    if scan.skipped:
+        report.findings.append(
+            Finding(
+                severity="warning",
+                code="unreadable-sources",
+                message=f"{len(scan.skipped)} source file(s) could not be read and were skipped.",
+                hint="Check file permissions and encoding. Unreadable files were not scanned, "
+                "so their variable references may be missing from this report.",
+            )
+        )
+
+    if not referenced and not scan.skipped:
         report.findings.append(
             Finding(
                 severity="warning",

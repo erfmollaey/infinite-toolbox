@@ -1,6 +1,6 @@
 # Infinite Toolbox
 
-**Infinite Toolbox** is a collection of small, practical developer tools, maintained under the **TeamInfinity** brand and developed in a single monorepo.
+**Infinite Toolbox** is a collection of small, practical developer tools, maintained under the **Infinity™** brand and developed in a single monorepo.
 
 Every tool targets one specific, recurring developer problem, ships with a small installation footprint, and can be released and versioned independently.
 
@@ -101,4 +101,6 @@ mypy src tests       # strict type checking
 
 ## License
 
-No license has been chosen for this repository yet — there is currently **no LICENSE file**, and reuse rights are therefore not granted by default. A license will be selected and added before any public release.
+EnvGuard is MIT-licensed. See [`envguard/LICENSE`](envguard/LICENSE) for the full license text.
+
+> This is a monorepo. Other tools (when they exist) may have their own license terms. The MIT license in `envguard/LICENSE` applies to EnvGuard only.
