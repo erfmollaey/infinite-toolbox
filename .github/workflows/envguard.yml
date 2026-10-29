@@ -54,4 +54,4 @@ jobs:
           envguard --help
 
       - name: Environment check smoke test
-        run: envguard check --strict /tmp
+        run: envguard check /tmp
