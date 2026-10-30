@@ -59,6 +59,16 @@ pip install -e ".[dev]"
 envguard --version
 ```
 
+To install the released package:
+
+```bash
+python -m pip install infinity-envguard
+```
+
+Package page: [infinity-envguard on PyPI](https://pypi.org/project/infinity-envguard/).
+Repository: [erfmollaey/infinite-toolbox](https://github.com/erfmollaey/infinite-toolbox/tree/main/envguard).
+
+
 Runtime dependencies are only **Typer** and **Rich**.
 
 ## Security
@@ -297,7 +307,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install EnvGuard
-        run: pip install envguard
+        run: pip install infinity-envguard
 
       - name: Check environment configuration
         run: envguard check --strict
@@ -384,7 +394,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install EnvGuard
-        run: pip install envguard
+        run: pip install infinity-envguard
 
       - name: Check environment configuration
         run: envguard check --strict

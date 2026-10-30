@@ -24,6 +24,12 @@ pip install -e ".[dev]"
 envguard --version
 ```
 
+To install the released package:
+
+```bash
+python -m pip install infinity-envguard
+```
+
 ## Requirements
 
 - Python 3.12 or newer

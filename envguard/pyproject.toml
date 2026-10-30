@@ -3,13 +3,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "envguard"
+name = "infinity-envguard"
 version = "0.1.0"
 description = "Local-first CLI that inspects environment-variable configuration and prevents common configuration mistakes."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Infinity™" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ["env", "environment", "dotenv", "config", "secrets", "cli"]
 classifiers = [
     "Development Status :: 3 - Alpha",
