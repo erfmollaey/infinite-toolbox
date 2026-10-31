@@ -1,0 +1,129 @@
+name: EnvGuard Release
+
+on:
+  push:
+    tags:
+      - 'envguard-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: envguard
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - name: Validate distribution metadata
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --quiet packaging
+          cat > /tmp/validate.py << 'PYEOF'
+          import sys, zipfile, tarfile, os
+
+          dist_dir = 'dist'
+          files = os.listdir(dist_dir)
+          wheels = [f for f in files if f.endswith('.whl')]
+          sdists = [f for f in files if f.endswith('.tar.gz')]
+
+          if not wheels or not sdists:
+              print('ERROR: missing wheel or sdist')
+              sys.exit(1)
+
+          wheel = wheels[0]
+          sdist = sdists[0]
+
+          with zipfile.ZipFile(os.path.join(dist_dir, wheel)) as z:
+              meta = z.read('infinity_envguard-0.1.0.dist-info/METADATA').decode()
+              assert 'Name: infinity-envguard' in meta, f'{wheel}: wrong name'
+              assert 'Version: 0.1.0' in meta, f'{wheel}: wrong version'
+              assert ('License-Expression: MIT' in meta or 'License: MIT' in meta), f'{wheel}: wrong license'
+              entry = z.read('infinity_envguard-0.1.0.dist-info/entry_points.txt').decode()
+              assert 'envguard = envguard.cli:app' in entry, f'{wheel}: missing console script'
+              top = z.read('infinity_envguard-0.1.0.dist-info/top_level.txt').decode().strip()
+              assert top == 'envguard', f'{wheel}: wrong top-level package: {top}'
+              names = z.namelist()
+              assert any('LICENSE' in n for n in names), f'{wheel}: missing LICENSE'
+
+          with tarfile.open(os.path.join(dist_dir, sdist), 'r:gz') as t:
+              members = [m.name for m in t.getmembers()]
+              forbidden = ['.env', '.env.example', '.env.local', '__pycache__', '.git', '.github']
+              for m in members:
+                  base = os.path.basename(m)
+                  for f in forbidden:
+                      if base == f or base.startswith('.pytest_cache') or base == '.ruff_cache':
+                          print(f'LEAK: {m}')
+                          sys.exit(1)
+              assert any('LICENSE' in m for m in members), f'{sdist}: missing LICENSE'
+              assert any('README.md' in m for m in members), f'{sdist}: missing README.md'
+
+          print('Validation passed')
+          PYEOF
+          python /tmp/validate.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: infinity-envguard-dist
+          path: envguard/dist/infinity-envguard-*
+          retention-days: 5
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/infinity-envguard
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: infinity-envguard-dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@61da13deb5f5124fb1536194f82ed3d9bbc7e8f3
+        with:
+          packages-dir: dist
+          verbose: true
+
+  release-github:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: infinity-envguard-dist
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: EnvGuard ${{ github.ref_name }}
+          body_path: envguard/docs/releases/ENVGUARD_v0.1.0_RELEASE_NOTES.md
+          files: |
+            dist/infinity-envguard-*.whl
+            dist/infinity-envguard-*.tar.gz
+          draft: false
+          prerelease: false
