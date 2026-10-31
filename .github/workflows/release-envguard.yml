@@ -20,10 +20,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: envguard
     steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
       - name: Validate release tag
         run: |
           TAG="${RELEASE_TAG}"
@@ -35,11 +37,6 @@ jobs:
           fi
           echo "Tag OK"
 
-      - name: Checkout tagged commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
@@ -49,9 +46,11 @@ jobs:
         run: python -m pip install --upgrade pip build
 
       - name: Build wheel and sdist
+        working-directory: envguard
         run: python -m build
 
       - name: Validate distribution metadata
+        working-directory: envguard
         run: |
           python -m pip install --upgrade pip
           python -m pip install --quiet packaging
