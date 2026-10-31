@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'envguard-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing EnvGuard release tag'
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
@@ -15,8 +24,21 @@ jobs:
       run:
         working-directory: envguard
     steps:
+      - name: Validate release tag
+        run: |
+          TAG="${RELEASE_TAG}"
+          echo "Selected tag: $TAG"
+          if ! [[ "$TAG" =~ ^envguard-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid EnvGuard tag format: $TAG"
+            echo "Expected format: envguard-vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          echo "Tag OK"
+
       - name: Checkout tagged commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
@@ -41,8 +63,8 @@ jobs:
           wheels = [f for f in files if f.endswith('.whl')]
           sdists = [f for f in files if f.endswith('.tar.gz')]
 
-          if not wheels or not sdists:
-              print('ERROR: missing wheel or sdist')
+          if len(wheels) != 1 or len(sdists) != 1:
+              print(f'ERROR: expected exactly one wheel and one sdist, found {len(wheels)} wheel(s) and {len(sdists)} sdist(s)')
               sys.exit(1)
 
           wheel = wheels[0]
@@ -62,13 +84,32 @@ jobs:
 
           with tarfile.open(os.path.join(dist_dir, sdist), 'r:gz') as t:
               members = [m.name for m in t.getmembers()]
-              forbidden = ['.env', '.env.example', '.env.local', '__pycache__', '.git', '.github']
+              forbidden_dirs = ['.env', '.env.example', '.env.local', '__pycache__', '.git', '.github', '.pytest_cache', '.ruff_cache']
               for m in members:
                   base = os.path.basename(m)
-                  for f in forbidden:
+                  for f in forbidden_dirs:
                       if base == f or base.startswith('.pytest_cache') or base == '.ruff_cache':
-                          print(f'LEAK: {m}')
+                          print(f'LEAK (basename): {m}')
                           sys.exit(1)
+                  # Also reject forbidden directory contents at any depth
+                  for f in ['.env', '.env.example', '.env.local', '.git/', '.github/']:
+                      if m.startswith(f) or (f == '.env' and (m == '.env' or m.startswith('.env.'))):
+                          # Skip false positives for paths where '.env' is not the forbidden file
+                          # but catch actual forbidden paths
+                          pass
+                  # Explicit path checks for repository metadata / env leaks
+                  for forbidden_path in ['.env', '.env.local', '.env.example', '.git/', '.github/']:
+                      if m == forbidden_path or m.startswith(forbidden_path):
+                          # Only flag if it is indeed a leak source
+                          if forbidden_path == '.env' and (m.startswith('.env.') or m == '.env'):
+                              print(f'LEAK: {m}')
+                              sys.exit(1)
+                          if forbidden_path == '.git/' and m.startswith('.git/'):
+                              print(f'LEAK: {m}')
+                              sys.exit(1)
+                          if forbidden_path == '.github/' and m.startswith('.github/'):
+                              print(f'LEAK: {m}')
+                              sys.exit(1)
               assert any('LICENSE' in m for m in members), f'{sdist}: missing LICENSE'
               assert any('README.md' in m for m in members), f'{sdist}: missing README.md'
 
@@ -110,6 +151,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
       - name: Download artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
@@ -119,9 +165,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
-          tag_name: ${{ github.ref_name }}
-          name: EnvGuard ${{ github.ref_name }}
-          body_path: envguard/docs/releases/ENVGUARD_v0.1.0_RELEASE_NOTES.md
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: EnvGuard ${{ env.RELEASE_TAG }}
+          body_path: docs/releases/ENVGUARD_v0.1.0_RELEASE_NOTES.md
           files: |
             dist/infinity-envguard-*.whl
             dist/infinity-envguard-*.tar.gz
