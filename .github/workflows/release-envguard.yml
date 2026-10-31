@@ -114,11 +114,18 @@ jobs:
           PYEOF
           python /tmp/validate.py
 
+      - name: Diagnostic paths before upload
+        run: |
+          echo "pwd: $(pwd)"
+          find . -maxdepth 4 -type f || true
+          find envguard -maxdepth 3 -type f || true
+
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: infinity-envguard-dist
-          path: envguard/dist/infinity-envguard-*
+          path: envguard/dist/infinity_envguard-*
+          if-no-files-found: error
           retention-days: 5
 
   publish-pypi:
