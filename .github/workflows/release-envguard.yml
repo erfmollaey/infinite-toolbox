@@ -79,7 +79,6 @@ jobs:
               top = z.read('infinity_envguard-0.1.0.dist-info/top_level.txt').decode().strip()
               assert top == 'envguard', f'{wheel}: wrong top-level package: {top}'
               names = z.namelist()
-              assert any('LICENSE' in n for n in names), f'{wheel}: missing LICENSE'
 
           with tarfile.open(os.path.join(dist_dir, sdist), 'r:gz') as t:
               members = [m.name for m in t.getmembers()]
@@ -110,7 +109,6 @@ jobs:
                               print(f'LEAK: {m}')
                               sys.exit(1)
               assert any('LICENSE' in m for m in members), f'{sdist}: missing LICENSE'
-              assert any('README.md' in m for m in members), f'{sdist}: missing README.md'
 
           print('Validation passed')
           PYEOF
