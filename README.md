@@ -1,6 +1,6 @@
 # Infinite Toolbox
 
-**Infinite Toolbox** is a collection of small, practical developer tools, maintained under the **Infinity™** brand and developed in a single monorepo.
+**Infinite Toolbox** is a collection of focused, practical developer tools, maintained under the **Infinity™** brand in a single monorepo.
 
 Every tool targets one specific, recurring developer problem, ships with a small installation footprint, and can be released and versioned independently.
 
@@ -29,10 +29,10 @@ Individual developers, full-stack and backend engineers, DevOps practitioners, a
 
 | Tool | Status | Description |
 | --- | --- | --- |
-| [**EnvGuard**](envguard/README.md) | ✅ Implemented — v0.1.0 (local MVP) | Local-first CLI that inspects environment-variable configuration: missing variables, stale templates, `NEXT_PUBLIC_*` exposure, and `.env` files accidentally tracked by Git. |
-| Further tools | 🗓 Planned | New tools will be added to this table as they are implemented. Nothing is listed here as available before it actually works. |
+| [**EnvGuard**](envguard/README.md) | ✅ Released — v0.1.0 (PyPI pending) | Local-first CLI that inspects environment-variable configuration: missing variables, stale templates, `NEXT_PUBLIC_*` exposure, and `.env` files accidentally tracked by Git. |
+| [**Infinity MCP Toolbox**](mcp-tools/README.md) | ✅ Release Candidate — v0.1.0 | TypeScript MCP server providing four read-only project-inspection tools for AI assistants and MCP-compatible clients. |
 
-> **Available today:** EnvGuard. Everything else in this repository is scaffolding, documentation, or planned work.
+> **Available today:** EnvGuard and Infinity MCP Toolbox (release candidate). MCP Toolbox is technically approved for release but not yet published to npm.
 
 ## EnvGuard
 
@@ -50,47 +50,76 @@ Summary: 2 error(s), 1 warning(s), 1 info
 
 Full documentation, usage examples, and security notes: [`envguard/README.md`](envguard/README.md).
 
+## Infinity MCP Toolbox
+
+Infinity MCP Toolbox is a TypeScript MCP server that exposes four read-only tools to AI assistants and MCP-compatible clients (OpenCode, Cursor, etc.):
+
+1. **`infinity_project_doctor`** — Analyzes project structure, detects project type, and identifies missing recommended files.
+2. **`infinity_git_context`** — Returns structured Git information: branch, working-tree status, diff stats, and recent commits (secrets redacted).
+3. **`infinity_environment_inspector`** — Inspects environment configuration templates without exposing any values.
+4. **`infinity_dependency_inspector`** — Analyzes dependency declarations from `package.json` and `requirements.txt` without installing anything.
+
+All tools are strictly read-only, operate within workspace boundaries, and never expose secrets. Git subprocesses use fixed arguments with `shell: false` and bounded output.
+
+Full documentation, installation, and security notes: [`mcp-tools/README.md`](mcp-tools/README.md).
+
 ## Repository structure
 
 ```text
 infinite-toolbox/
-├── README.md            # this file — the collection overview
-├── .gitignore           # keeps real .env files out, keeps templates in
-└── envguard/            # Tool 1: EnvGuard (independently maintainable)
+├── README.md            # this file — collection overview
+├── .github/
+│   └── workflows/       # CI and release workflows
+├── envguard/            # Tool 1: EnvGuard (Python CLI)
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── src/envguard/
+│   └── tests/
+└── mcp-tools/           # Tool 2: Infinity MCP Toolbox (TypeScript)
     ├── README.md
-    ├── pyproject.toml
-    ├── src/envguard/    # package source (src layout)
-    └── tests/           # pytest suite
+    ├── package.json
+    ├── src/
+    └── tests/
 ```
 
 Each tool is a self-contained directory with its own packaging configuration, so tools can be developed, tested, and released independently while sharing one repository.
 
 ## Prerequisites
 
-- **Python 3.12+** (developed and tested on 3.14)
+- **Python 3.12+** (developed and tested on 3.14) — for EnvGuard
+- **Node.js 18+** — for Infinity MCP Toolbox
 - **Git** — optional; enables Git exposure checks in EnvGuard
-- `pip` and `venv` (or any equivalent virtual-environment tooling)
 
-## Basic setup
+## Development
+
+### EnvGuard (Python)
 
 ```bash
 cd envguard
 python3 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -e ".[dev]"
 envguard --help
+
+# Tests
+pytest
+ruff check src tests
+ruff format src tests --check
+mypy src tests
 ```
 
-## Development
-
-All checks used by the maintainers:
+### Infinity MCP Toolbox (Node.js / TypeScript)
 
 ```bash
-cd envguard
-pytest              # test suite
-ruff check src tests # lint
-ruff format src tests --check
-mypy src tests       # strict type checking
+cd mcp-tools
+npm ci
+npm run build
+npm start
+
+# Quality checks
+npm test
+npm run typecheck
+npm run lint
 ```
 
 ## Contributing
@@ -101,6 +130,9 @@ mypy src tests       # strict type checking
 
 ## License
 
-EnvGuard is MIT-licensed. See [`envguard/LICENSE`](envguard/LICENSE) for the full license text.
+Each tool in this monorepo has its own license. See the respective `LICENSE` files:
 
-> This is a monorepo. Other tools (when they exist) may have their own license terms. The MIT license in `envguard/LICENSE` applies to EnvGuard only.
+- EnvGuard: [`envguard/LICENSE`](envguard/LICENSE) (MIT)
+- Infinity MCP Toolbox: [`mcp-tools/LICENSE`](mcp-tools/LICENSE) (MIT)
+
+> This is a monorepo. Other tools (when they exist) may have their own license terms.
