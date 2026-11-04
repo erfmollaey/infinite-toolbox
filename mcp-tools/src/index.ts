@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * Main entry point for the Infinity MCP Toolbox.
  * Starts the MCP server using stdio transport.

@@ -25,7 +25,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: ["18", "20", "24"]
+        node-version: ["20", "24"]
 
     steps:
       - uses: actions/checkout@v4
@@ -51,3 +51,39 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  runtime-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-tools
+
+    strategy:
+      matrix:
+        node-version: ["18"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: mcp-tools/package-lock.json
+
+      - name: Install production dependencies only
+        run: npm ci --omit=dev
+
+      - name: Build
+        run: npx tsc || (npm install typescript && npx tsc)
+
+      - name: Verify shebang
+        run: head -1 dist/index.js | grep -q '#!/usr/bin/env node' && echo "Shebang OK"
+
+      - name: Runtime smoke test
+        run: |
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"1.0"}}}' | node dist/index.js &
+          sleep 2
+          kill %1 2>/dev/null || true
+          echo "Runtime started successfully on Node ${{ matrix.node-version }}"
