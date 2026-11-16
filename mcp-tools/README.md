@@ -1,279 +1,398 @@
 # Infinity MCP Toolbox
 
-A collection of lightweight, secure, read-only MCP tools designed to provide AI coding agents with structured insights into local development projects.
+<p align="center">
+  <strong>Four developer tools. One intelligent MCP server.</strong>
+  <br />
+  Give AI assistants structured insights into your development projects.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/infinity-mcp-toolbox"><img src="https://img.shields.io/npm/v/infinity-mcp-toolbox?color=CB3837&logo=npm&logoColor=white" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/infinity-mcp-toolbox"><img src="https://img.shields.io/npm/dm/infinity-mcp-toolbox?color=blue&logo=npm" alt="npm downloads" /></a>
+  <a href="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/mcp-tools.yml"><img src="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/mcp-tools.yml/badge.svg?branch=main" alt="MCP Toolbox CI" /></a>
+  <img src="https://img.shields.io/node/v/infinity-mcp-toolbox?logo=node.js&color=339933" alt="Node.js version" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License" /></a>
+</p>
+
+---
 
 ## Overview
 
-Infinity MCP Toolbox is part of the Infinite Toolbox monorepo ecosystem. It provides AI agents (OpenCode, Cursor, and other MCP-compatible clients) with tools to analyze local development projects without any write capabilities or security risks.
+**Infinity MCP Toolbox** is a lightweight, read-only [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server designed to help AI assistants understand software development projects.
 
-All tools are strictly read-only, operate within configured workspace boundaries, and never expose secrets or credentials.
+It provides four specialized tools that allow MCP-compatible AI clients to inspect project structure, Git repository context, environment configuration, and dependency information.
+
+Instead of manually gathering project details, your AI assistant can use these tools to obtain structured information directly from your development environment.
+
+Built with TypeScript and Node.js, Infinity MCP Toolbox is designed to be simple to install, easy to integrate, and safe by default.
 
 ## Features
 
-- **Project Analysis**: Analyze project structure, detect project types, and identify missing recommended files
-- **Git Context**: Get structured information about Git repositories including branches, working tree status, and diff statistics
-- **Environment Inspection**: Inspect environment configuration templates without exposing any values
-- **Dependency Analysis**: Analyze package dependencies across multiple package managers (npm, pip, Maven, Gradle, Cargo, Composer, Bundler)
-- **Security First**: All tools are read-only with centralized workspace access control
-- **MCP Compatible**: Works with OpenCode, Cursor, and other MCP clients via standard Model Context Protocol
+- **Four specialized MCP tools** for common development workflows.
+- **Read-only operations** to inspect project information without modifying files.
+- **Secret redaction** to reduce the risk of exposing sensitive environment values.
+- **Git-aware context** for understanding repository state and metadata.
+- **Dependency inspection** for understanding project packages and manifests.
+- **Lightweight installation** through npm and npx.
+- **Standard MCP communication** over STDIO.
+- **No API key required** for local project inspection.
+
+## Available Tools
+
+| Tool | Description |
+|---|---|
+| 🩺 Project Doctor | Inspects project structure and identifies common project configuration issues. |
+| 🌿 Git Context | Collects useful Git repository information and development context. |
+| 🔐 Environment Inspector | Inspects environment configuration with heuristic secret redaction. |
+| 📦 Dependency Inspector | Examines dependency manifests and provides structured dependency information. |
+
+### How It Works
+
+```mermaid
+flowchart TD
+    AI["AI Assistant<br/>Claude / Cursor / Other MCP Client"]
+    MCP["Infinity MCP Toolbox<br/>MCP Server"]
+    
+    AI <-->|"MCP · STDIO"| MCP
+
+    MCP --> PD["🩺 Project Doctor"]
+    MCP --> GC["🌿 Git Context"]
+    MCP --> EI["🔐 Environment Inspector"]
+    MCP --> DI["📦 Dependency Inspector"]
+
+    PD --> FS["Project Files"]
+    GC --> GIT["Git Repository"]
+    EI --> ENV["Environment Files"]
+    DI --> PKG["Dependency Manifests"]
+```
+
+The AI client communicates with the MCP server, which exposes the four tools. Each tool inspects its relevant project information and returns structured results to the client.
+
+---
+
+## Requirements
+
+- Node.js 18 or later
+- npm
+- An MCP-compatible AI client
+
+No global installation is required.
 
 ## Installation
 
-This package is part of the Infinite Toolbox monorepo. After cloning the main repository:
+### Option 1: Run with npx (Recommended)
+
+The easiest way to use Infinity MCP Toolbox is directly through npx:
 
 ```bash
-# Navigate to the package directory
-cd mcp-tools
-
-# Install dependencies
-npm install
-
-# Build TypeScript
-npm run build
+npx -y infinity-mcp-toolbox@latest
 ```
 
-## Build Instructions
+This downloads and launches the package without requiring a global installation.
+
+### Option 2: Install Globally
 
 ```bash
-# TypeScript compilation
-npm run build
-
-# Type checking only
-npm run typecheck
-
-# Linting
-npm run lint
-
-# Format check
-npm run format:check
-
-# Run tests
-npm run test
+npm install -g infinity-mcp-toolbox
 ```
 
-## Development Instructions
+Then run:
 
 ```bash
-# Start the MCP server
-node dist/index.js
-
-# Start with watch
-npm run build -- --watch
-
-# Run tests in watch mode
-npm run test:watch
+infinity-mcp-toolbox
 ```
 
-## Testing Instructions
-
-Run the full test suite:
+### Option 3: Install Locally
 
 ```bash
-npm test
+npm install infinity-mcp-toolbox
 ```
 
-The tests focus on meaningful behavior:
+Run the executable through:
 
-- Tool registration and discovery
-- Input validation
-- Project type detection
-- Git status parsing
-- Environment variable extraction (without values)
-- Path traversal prevention
-- Symlink handling
-- Error handling
-- Structured MCP response validation
+```bash
+npx infinity-mcp-toolbox
+```
 
-Use temporary test directories; tests do not depend on the developer's actual environment.
+---
 
-## MCP Client Configuration
+## Configuration
 
-### OpenCode Configuration
+Infinity MCP Toolbox uses the MCP STDIO transport, making it compatible with MCP clients that support local server processes.
 
-OpenCode uses MCP client configuration. For the Infinity MCP Toolbox, add to your `.opencode` configuration:
+### Claude Desktop
+
+Open your Claude Desktop MCP configuration file and add the following server configuration:
 
 ```json
 {
-  "mcp": {
-    "servers": {
-      "infinity-mcp-toolbox": {
-        "command": "npx",
-        "args": ["infinity-mcp-toolbox"],
-        "cwd": "path/to/your/project",
-        "env": {}
-      }
+  "mcpServers": {
+    "infinity-toolbox": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "infinity-mcp-toolbox@latest"
+      ]
     }
   }
 }
 ```
 
-### Cursor Configuration
+Restart Claude Desktop after saving the configuration.
 
-In Cursor, add the Infinity MCP Toolbox server to your MCP servers:
+### Cursor
+
+Add the following configuration to your Cursor MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "infinity-toolbox": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "infinity-mcp-toolbox@latest"
+      ]
+    }
+  }
+}
+```
+
+### VS Code
+
+For VS Code MCP-compatible configurations, add:
 
 ```json
 {
   "servers": {
-    "infinity-mcp-toolbox": {
+    "infinity-toolbox": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["infinity-mcp-toolbox"],
-      "cwd": "/path/to/workspace",
-      "env": {}
+      "args": [
+        "-y",
+        "infinity-mcp-toolbox@latest"
+      ]
     }
   }
 }
 ```
 
-### Generic MCP Client Configuration
+> **Note:** MCP configuration locations and formats may vary between client versions. Refer to your client's documentation if necessary.
+
+---
+
+## Usage
+
+Once the server is configured and your MCP client has connected, the four tools become available to your AI assistant.
+
+You can use natural-language requests such as:
+
+### Project Doctor
+
+Examples:
+
+- "Inspect this project and give me an overview of its structure."
+- "Check the project configuration for common issues."
+- "Help me understand the organization of this codebase."
+
+### Git Context
+
+Examples:
+
+- "Analyze the current Git repository state."
+- "Give me an overview of the current branch and working tree."
+- "Help me understand the recent repository context."
+
+### Environment Inspector
+
+Examples:
+
+- "Inspect the environment configuration of this project."
+- "Check which environment variables are configured."
+- "Identify potentially missing configuration values."
+
+Sensitive values are subject to heuristic redaction. Do not assume that every secret can be detected.
+
+### Dependency Inspector
+
+Examples:
+
+- "Analyze the dependencies used by this project."
+- "Inspect the package manifests."
+- "Give me an overview of the project's dependency configuration."
+
+The AI assistant decides which available tool to invoke based on your request and the tool descriptions.
+
+---
+
+## Security
+
+Security is an important design consideration.
+
+Infinity MCP Toolbox is designed for read-only project inspection.
+
+### Security Principles
+
+- No arbitrary shell command execution.
+- Read-only filesystem operations.
+- Git subprocesses use fixed arguments.
+- Git subprocesses run with `shell: false`.
+- Controlled subprocess environment and bounded execution.
+- Heuristic redaction for sensitive environment values.
+
+### Security Limitations
+
+No security mechanism is perfect. Keep the following limitations in mind:
+
+- Filesystem operations may be subject to Time-of-Check to Time-of-Use (TOCTOU) race conditions.
+- Secret redaction is heuristic and cannot guarantee detection of every secret.
+- Dependency manifest parsing has known limitations.
+- Some security tests are POSIX-specific.
+
+**Recommendation:** Run the server only in project directories you trust. Review sensitive project files and permissions before granting an AI client access.
+
+---
+
+## Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| TypeScript | Application development |
+| Node.js | Runtime |
+| MCP SDK | Model Context Protocol implementation |
+| Zod | Schema validation |
+| Vitest | Automated testing |
+| ESLint | Code quality |
+| Prettier | Code formatting |
+
+## Development
+
+Want to contribute or explore the source code?
+
+### Clone the Repository
 
 ```bash
-# Start with a specific working directory
-npx infinity-mcp-toolbox --workspace /path/to/project
+git clone https://github.com/erfmollaey/infinite-toolbox.git
+
+cd infinite-toolbox/mcp-tools
 ```
 
-## Available Tools
+### Install Dependencies
 
-### 1. infinity_project_doctor
+```bash
+npm ci
+```
 
-Analyzes the structure and basic health of a local development project.
-
-**Input Parameters:**
-- `workspace_root` (optional): Path to the project workspace. Defaults to current directory.
-
-**Returns:**
-- `project_type`: Detected project types (node, typescript, python, rust, go, java, php, ruby, docker, unknown)
-- `detected_files`: List of configuration files found
-- `available_scripts`: Available npm/Yarn scripts
-- `missing_recommended_files`: Recommended files not found
-- `warnings`: Any warnings about project health
-- `summary`: Summary string with key metrics
-
-### 2. infinity_git_context
-
-Provides structured information about the current Git working tree.
-
-**Input Parameters:**
-- `workspace_root` (optional): Path to the Git repository. Defaults to current directory.
-
-**Returns:**
-- `is_git_repo`: Whether the directory is a Git repository
-- `current_branch`: Current Git branch or "detached@..." if detached
-- `working_tree_clean`: Whether working tree is clean
-- `modified_files`, `added_files`, `deleted_files`: Categorized file changes
-- `untracked_files`: Untracked files
-- `staged_changes`, `unstaged_changes`: Lists of staged and unstaged changes
-- `diff_stats`: Statistics about diff changes
-- `bounded_diff_summary`: Limited diff summary (truncated)
-- `summary`: Summary string
-
-### 3. infinity_environment_inspector
-
-Inspects environment configuration without exposing secrets.
-
-**Input Parameters:**
-- `workspace_root` (optional): Path to the project workspace. Defaults to current directory.
-
-**Returns:**
-- `detected_template_files`: Template files found (.env.example, etc.)
-- `detected_env_files`: .env files found
-- `template_variable_names`: Environment variable names from templates
-- `configured_variable_names`: Environment variable names detected from process.env
-- `missing_variables`: Variables in templates not in configured variables
-- `duplicate_variable_declarations`: Variables appearing multiple times
-- `warnings`: Warnings about environment configuration
-- `summary`: Summary string
-
-### 4. infinity_dependency_inspector
-
-Analyzes project dependencies and identifies potential maintenance issues.
-
-**Input Parameters:**
-- `workspace_root` (optional): Path to the project workspace. Defaults to current directory.
-
-**Returns:**
-- `manifests`: Array of detected dependency manifest files with details
-- `total_declared_dependencies`: Total number of declared dependencies
-- `duplicate_declarations`: Packages declared in both dependencies and devDependencies
-- `version_constraint_warnings`: Packages with unconstrained versions
-- `potentially_unused`: Packages that might be unused (basic heuristic)
-- `summary`: Summary string
-
-## Security Model
-
-Infinity MCP Toolbox is built with security as a first-class requirement:
-
-### Core Security Principles
-
-1. **Read-Only Only**: All tools are strictly read-only. No file modifications are possible.
-
-2. **Workspace Boundaries**: Filesystem access is restricted to a configurable workspace root. Path traversal is prevented.
-
-3. **Path Resolution**: All paths are resolved and validated against the workspace root using canonical (realpath) resolution.
-
-4. **No Command Execution**: Never executes arbitrary shell commands or Git operations with user-supplied parameters.
-
-5. **Secret Redaction**: Environment variable values are never returned. Keys are validated to be non-sensitive.
-
-6. **Output Size Limits**: File sizes, outputs, and diffs are bounded to prevent denial-of-service attacks.
-
-7. **Symlink Safety**: Symbolic links are handled carefully without escaping workspace boundaries.
-
-### Implementation Details
-
-- **Safe Filesystem Access**: Centralized `resolveWorkspacePath` function ensures all reads stay within the workspace
-- **Git Safety**: Uses `git status --porcelain=v2` for structured reading (no arbitrary command execution)
-- **Environment Safety**: Only variable names are extracted, never values
-- **Diff Limits**: Bounded diff summaries prevent excessive output (10KB default)
-- **File Size Limits**: Files larger than 1MB are rejected
-
-### Filesystem Security Limitations
-
-The implementation uses path resolution and realpath containment checks to reduce traversal and symlink risks. These checks do not guarantee atomic filesystem access: a filesystem entry could theoretically change between validation and use. The current implementation does not provide a complete open-by-file-descriptor race-proof guarantee.
-
-### MCP Transport Security
-
-- All diagnostic logging goes to stderr
-- stdout is reserved exclusively for MCP JSON-RPC protocol communication
-- The stdio transport ensures proper protocol compliance
-
-## Current Limitations
-
-1. **Basic Dependency Analysis**: Limited to declaration parsing; no source code analysis for unused dependencies
-
-2. **Limited Manifest Support**: Supports major package managers but newer or proprietary manifests may be missed
-
-3. **Basic Version Constraints**: Limited validation of version ranges; only checks for unconstrained versions
-
-4. **No Authentication**: Tools work on any Git repository without authentication
-
-5. **No Network Access**: All tools operate offline; no cloud-based analysis
-
-6. **Basic Project Detection**: Project type detection is based on file presence, not content analysis
-
-## Testing
-
-Run tests to verify functionality:
+### Run Tests
 
 ```bash
 npm test
 ```
 
-Tests validate:
-- Tool registration and discovery via MCP protocol
-- Input validation and error handling
-- Project detection accuracy
-- Git status parsing (excluding real repository data)
-- Environment variable extraction (without values)
-- Path traversal prevention
-- Symlink handling
-- Secret redaction
+### Type Checking
 
-All tests use temporary directories to avoid depending on the developer's environment.
+```bash
+npm run typecheck
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Run Locally
+
+```bash
+node dist/index.js
+```
+
+The server communicates over STDIO. It is intended to be launched by an MCP client or a compatible protocol client.
+
+---
+
+## Project Structure
+
+```text
+mcp-tools/
+├── src/
+│   ├── core/
+│   ├── tools/
+│   │   ├── project-doctor/
+│   │   ├── git-context/
+│   │   ├── environment-inspector/
+│   │   └── dependency-inspector/
+│   ├── utils/
+│   ├── server.ts
+│   └── index.ts
+├── tests/
+├── dist/
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
+└── README.md
+```
+
+The `src/` directory contains the TypeScript implementation, while `dist/` contains the compiled JavaScript distributed with the npm package.
+
+## Compatibility
+
+| Requirement | Support |
+|---|---|
+| Node.js Runtime | 18+ |
+| Package format | ESM |
+| Transport | MCP STDIO |
+| Installation | npm / npx |
+| License | MIT |
+
+The package runtime supports Node.js 18 and later. Development tooling has a separate Node.js requirement; the full CI quality pipeline currently runs on Node.js 20 and 24.
+
+## Versioning
+
+Infinity MCP Toolbox follows Semantic Versioning.
+
+Current version: **0.1.0**
+
+See the [GitHub Releases](https://github.com/erfmollaey/infinite-toolbox/releases) page for release notes and version history.
 
 ## Contributing
 
-See the parent [Infinite Toolbox README](https://github.com/Infinite-Toolbox/infinite-toolbox) for contribution guidelines.
+Contributions, suggestions, bug reports, and improvements are welcome.
+
+If you find a bug or have an idea for a new tool:
+
+1. Open an issue describing the problem or proposal.
+2. Provide relevant reproduction steps when reporting a bug.
+3. Submit a pull request with a clear description of your changes.
+
+Please keep changes focused and include tests for new functionality.
 
 ## License
 
-MIT License. See LICENSE file in the package root.
+Infinity MCP Toolbox is released under the [MIT License](LICENSE).
+
+Copyright © Infinity™.
+
+## Part of Infinity™
+
+Infinity MCP Toolbox is part of **[Infinite Toolbox](https://github.com/erfmollaey/infinite-toolbox)** — an open-source collection of practical developer tools built under the Infinity™ brand.
+
+Explore more:
+
+- [Infinite Toolbox Repository](https://github.com/erfmollaey/infinite-toolbox)
+- [Infinity MCP Toolbox on npm](https://www.npmjs.com/package/infinity-mcp-toolbox)
+- [Infinity™](https://teaminfinity.ir)
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ by Infinity™</strong>
+  <br />
+  <sub>Tools that make development smarter.</sub>
+</p>
