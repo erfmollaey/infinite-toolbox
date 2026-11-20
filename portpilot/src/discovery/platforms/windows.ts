@@ -8,7 +8,7 @@ export interface WindowsConnection {
   pid: number | null;
 }
 
-/** Parse `netstat -ano -p tcp` output, keeping only LISTENING sockets. */
+/** Parse `netstat -ano` output, keeping only TCP LISTENING sockets. */
 export function parseNetstatOutput(
   output: string,
   filterPort?: number,
@@ -151,7 +151,10 @@ async function resolveProcessNames(): Promise<Map<number, string>> {
 async function findWithNetstat(
   filterPort?: number,
 ): Promise<DiscoveryOutcome | null> {
-  const result = await runCommand("netstat", ["-ano", "-p", "tcp"]);
+  // Do not pass "-p tcp": Windows then enumerates TCPv4 only and hides IPv6
+  // listeners. Without a protocol filter both address families are listed,
+  // and the parser keeps only TCP LISTENING rows.
+  const result = await runCommand("netstat", ["-ano"]);
   if (!result.ok) {
     return null;
   }
@@ -217,7 +220,7 @@ export async function findOnWindows(port?: number): Promise<DiscoveryOutcome> {
     return powershell;
   }
 
-  const probe = await runCommand("netstat", ["-ano", "-p", "tcp"]);
+  const probe = await runCommand("netstat", ["-ano"]);
   const missing = isMissingCommand(probe)
     ? "netstat is not available"
     : "netstat failed";

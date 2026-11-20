@@ -136,7 +136,7 @@ system utility is assumed to exist on every platform.
 | --- | --- | --- | --- |
 | macOS | `lsof -nP -iTCP -sTCP:LISTEN` | `netstat -an -p tcp` | The netstat fallback lists endpoints but cannot reliably report PIDs. |
 | Linux | `lsof -nP -iTCP -sTCP:LISTEN` | `/proc/net/tcp`, `/proc/net/tcp6`, and `/proc/<pid>/fd` | Processes owned by other users may be unreadable; their sockets are shown with PID unknown. |
-| Windows | `netstat -ano -p tcp` + `tasklist` | PowerShell `Get-NetTCPConnection -State Listen` | Command lines are read with `Get-CimInstance Win32_Process` when PowerShell is available. |
+| Windows | `netstat -ano` + `tasklist` | PowerShell `Get-NetTCPConnection -State Listen` | No protocol filter is used, so both IPv4 and IPv6 listeners are visible. Command lines are read with `Get-CimInstance Win32_Process` when PowerShell is available. |
 
 Only **TCP listeners** are discovered. UDP ports are not listed.
 
