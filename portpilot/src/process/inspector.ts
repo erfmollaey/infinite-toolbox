@@ -100,12 +100,12 @@ async function inspectWindows(
   }
 
   const script = `$p = Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}'; if ($p) { $p | Select-Object ProcessId,ParentProcessId,Name,CommandLine,ExecutablePath,CreationDate | ConvertTo-Json -Compress } else { 'null' }`;
-  const cim = await runCommand("powershell.exe", [
-    "-NoProfile",
-    "-NonInteractive",
-    "-Command",
-    script,
-  ]);
+  const cim = await runCommand(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    // Cold CIM startup can exceed the default command timeout on Windows CI.
+    { timeoutMs: 20000 },
+  );
 
   let details: WindowsCimProcess | null = null;
   if (cim.ok && cim.stdout.trim() !== "null") {
@@ -216,12 +216,11 @@ async function windowsTasklistIdentity(
 
 async function windowsIdentity(pid: number): Promise<ProcessIdentity | null> {
   const script = `$p = Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}'; if ($p) { $p | Select-Object ProcessId,Name,CreationDate | ConvertTo-Json -Compress } else { 'null' }`;
-  const result = await runCommand("powershell.exe", [
-    "-NoProfile",
-    "-NonInteractive",
-    "-Command",
-    script,
-  ]);
+  const result = await runCommand(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    { timeoutMs: 20000 },
+  );
 
   if (result.ok && result.stdout.trim() === "null") {
     // CIM positively reports that the PID no longer exists.

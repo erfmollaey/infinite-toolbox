@@ -180,12 +180,16 @@ async function findWithNetstat(
 async function findWithPowerShell(
   filterPort?: number,
 ): Promise<DiscoveryOutcome | null> {
-  const result = await runCommand("powershell.exe", [
-    "-NoProfile",
-    "-NonInteractive",
-    "-Command",
-    "Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess | ConvertTo-Json -Compress",
-  ]);
+  const result = await runCommand(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess | ConvertTo-Json -Compress",
+    ],
+    { timeoutMs: 20000 },
+  );
 
   if (!result.ok) {
     return null;
