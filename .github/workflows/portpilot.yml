@@ -1,0 +1,135 @@
+name: PortPilot CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "portpilot/**"
+      - ".github/workflows/portpilot.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "portpilot/**"
+      - ".github/workflows/portpilot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: portpilot
+
+jobs:
+  quality:
+    name: Quality (Node 24)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: portpilot/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ["18", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: portpilot/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Inspect package contents
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24'
+        run: npm pack --dry-run
+
+  packaged-cli:
+    name: Packaged CLI (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: portpilot/package-lock.json
+
+      - name: Install dependencies and build
+        run: npm ci
+
+      - name: Pack
+        run: npm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Install the tarball and exercise the CLI
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+
+          tarball=$(find "$RUNNER_TEMP" -maxdepth 1 -name 'infinity-portpilot-*.tgz' -print -quit)
+          mkdir -p "$RUNNER_TEMP/pp-install"
+          cd "$RUNNER_TEMP/pp-install"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund "$tarball"
+
+          bin="$RUNNER_TEMP/pp-install/node_modules/.bin/portpilot"
+
+          "$bin" --help
+          expected=$(node -p "require('$GITHUB_WORKSPACE/portpilot/package.json').version")
+          test "$("$bin" --version)" = "$expected"
+          "$bin" list
+
+          node -e 'const net=require("net");const s=net.createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);setInterval(()=>{},1000)})' > "$RUNNER_TEMP/pp-port.txt" &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 50); do
+            [ -s "$RUNNER_TEMP/pp-port.txt" ] && break
+            sleep 0.1
+          done
+          port=$(cat "$RUNNER_TEMP/pp-port.txt")
+
+          "$bin" find "$port"
+          "$bin" inspect "$port"
+          "$bin" "$port"
+
+          if "$bin" free "$port"; then
+            echo "free unexpectedly changed something without a TTY" >&2
+            exit 1
+          fi

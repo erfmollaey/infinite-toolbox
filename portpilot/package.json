@@ -1,0 +1,68 @@
+{
+  "name": "infinity-portpilot",
+  "version": "0.1.0",
+  "description": "Lightweight CLI tool for inspecting and managing network port processes.",
+  "type": "commonjs",
+  "main": "dist/cli/app.js",
+  "bin": {
+    "portpilot": "./cli.js"
+  },
+  "files": [
+    "cli.js",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erfmollaey/infinite-toolbox",
+    "directory": "portpilot"
+  },
+  "homepage": "https://github.com/erfmollaey/infinite-toolbox/tree/main/portpilot",
+  "bugs": {
+    "url": "https://github.com/erfmollaey/infinite-toolbox/issues"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "build": "tsc",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test": "node --test tests/validator.test.js tests/parsers.test.js tests/prompt.test.js tests/discovery.test.js tests/termination.test.js tests/cli.test.js",
+    "test:unit": "node --test tests/validator.test.js tests/parsers.test.js",
+    "test:integration": "node --test tests/discovery.test.js tests/termination.test.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.js\" \"cli.js\" \"eslint.config.mjs\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.js\" \"cli.js\" \"eslint.config.mjs\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "cli",
+    "port",
+    "process",
+    "inspection",
+    "termination",
+    "network",
+    "monitoring"
+  ],
+  "author": "Infinity™",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@types/node": "^22.13.1",
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.3",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ]
+}

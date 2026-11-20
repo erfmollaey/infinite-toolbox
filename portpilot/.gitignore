@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Logs
+logs/
+
+# Coverage
+coverage/
+*.lcov
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Temporary files
+tmp/
+pids/
+*.pid
+
+# Test results
+junit.xml
+report.html
+
+# Caches
+.cache/
+.eslintcache
+
+# Package artifacts
+*.tgz
+*.tar.gz
+*.zip
