@@ -71,11 +71,9 @@ Only **TCP listeners** are discovered. UDP ports are not listed.
 
 ## Installation
 
-PortPilot is version `0.1.0` and is published to npm as `infinity-portpilot`.
+PortPilot is version `0.1.0`.
 
-```bash
-npm install -g infinity-portpilot
-```
+### From this repository (pre-publication)
 
 ```bash
 cd portpilot
@@ -91,16 +89,45 @@ npm link
 portpilot list
 ```
 
-Once published, the package exposes a `portpilot` binary through its `bin` entry.
+### From npm (after the initial release)
+
+Once PortPilot is published to npm as `infinity-portpilot`, install globally:
+
+```bash
+npm install -g infinity-portpilot
+```
+
+The package exposes a `portpilot` binary through its `bin` entry.
 
 ## Publishing
 
-This project uses GitHub Actions and npm Trusted Publishing to publish new releases.
+PortPilot is published to npm as `infinity-portpilot`.
+
+### Initial release (manual bootstrap)
+
+The first publication to npm must be performed manually. After the quality gates pass, run the publication steps locally:
+
+```bash
+cd portpilot
+npm ci
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
+npm pack --dry-run
+npm publish --access public
+```
+
+Once published, `npm install -g infinity-portpilot` becomes available worldwide.
+
+### Subsequent releases (GitHub Actions, OIDC)
+
+`.github/workflows/portpilot-publish.yml` automates publication for future releases:
 
 - **Trigger**: A GitHub tag matching `portpilot-vX.Y.Z` triggers the publish workflow.
+- **Manual publishing**: The workflow can also be triggered manually via `workflow_dispatch`, where you specify the existing release tag to publish.
 - **Validation**: The workflow validates that the tag version exactly matches `portpilot/package.json` and that the package name is `infinity-portpilot`.
 - **Process**: The tagged commit is checked out, dependencies are installed, type checks, lint, format checks, and tests all pass, then `npm pack --dry-run` is verified, and finally the package is published publicly via `npm publish --access public` using OIDC (npm Trusted Publishing).
-- **Manual publishing**: The workflow can also be triggered manually via `workflow_dispatch`, where you specify the existing release tag to publish.
 
 Future releases use tags named `portpilot-vMAJOR.MINOR.PATCH` (e.g., `portpilot-v0.1.0`, `portpilot-v1.2.3`). The npm package automatically generates provenance metadata through Trusted Publishing.
 
@@ -296,7 +323,7 @@ Windows process details depend on PowerShell CIM (`Get-CimInstance Win32_Process
 - **TCP only.** UDP listeners and non-listening sockets are out of scope.
 - **Non-TTY means no termination.** Automation can inspect ports, but cannot confirm a kill.
 - **Platform exposure varies.** On macOS, `ps` may hide arguments of other users' processes. On Linux, `/proc` entries for other users may be unreadable. On Windows without PowerShell, details are reduced to name and PID.
-- **Windows verification status.** Discovery, parsing, inspection, and termination logic are implemented and covered by fixture tests. The previously tested commit passed the full cross-platform CI run ([`44809778797`](https://github.com/erfmollaey/infinite-toolbox/actions/runs/44809778797)) — 8/8 jobs, including Windows on Node 18 and Node 24. The current uncommitted changes have not yet run through CI.
+- **Windows verification status.** Discovery, parsing, inspection, and termination logic are implemented and covered by fixture tests. The previously tested commit passed the full cross-platform CI run ([`44809778797`](https://github.com/erfmollaey/infinite-toolbox/actions/runs/44809778797)) — 8/8 jobs, including Windows on Node 18 and Node 24.
 
 ## Exit codes
 
@@ -394,8 +421,8 @@ See [BUILD.md](BUILD.md) for packaging details and troubleshooting.
 ## Limitations
 
 - Only TCP listeners are supported.
-- The tool is published to npm as `infinity-portpilot`; install with `npm install -g infinity-portpilot`.
-- Windows support has fixture-test coverage and passed the full CI matrix, including Windows Node 18 and 24, on the previously tested commit. The current uncommitted changes have not yet been validated by CI.
+- The initial release must be published manually from this repository; subsequent releases are published automatically by GitHub Actions using npm Trusted Publishing (OIDC).
+- Windows support has fixture-test coverage and passed the full CI matrix, including Windows Node 18 and 24, on the previously tested commit.
 - Processes owned by other users may not expose their PID or command line, and PortPilot will not elevate privileges to find out.
 - Ports can change between discovery and termination; revalidation reduces, but cannot eliminate, that race.
 - Platform command availability varies (`lsof`, `netstat`, `tasklist`, PowerShell). PortPilot reports incomplete discovery rather than claiming a port is free.

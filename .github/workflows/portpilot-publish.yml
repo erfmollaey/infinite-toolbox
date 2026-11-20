@@ -20,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: portpilot-publish-${{ github.event.inputs.tag || github.ref_name }}
+  group: portpilot-npm-publish
   cancel-in-progress: false
 
 jobs:
@@ -36,6 +36,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: portpilot/package-lock.json
 
       - name: Validate release tag format
         run: |
@@ -80,14 +88,6 @@ jobs:
             exit 1
           fi
           echo "Package name OK"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-          cache: npm
-          cache-dependency-path: portpilot/package-lock.json
 
       - name: Ensure npm >= 11.5.1
         run: |
