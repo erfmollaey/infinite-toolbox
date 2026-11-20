@@ -1,46 +1,66 @@
 # Infinite Toolbox
 
-**Infinite Toolbox** is a collection of focused, practical developer tools, maintained under the **Infinity™** brand in a single monorepo.
+<p align="center">
+  <img src="public/Infinite%20Toolbox%20logo.webp" alt="Infinite Toolbox — an open-source collection of practical developer tools" width="560" />
+</p>
 
-Every tool targets one specific, recurring developer problem, ships with a small installation footprint, and can be released and versioned independently.
+<p align="center">
+  <strong>Small tools. Real problems. No accounts, no telemetry.</strong>
+  <br />
+  An open-source collection of focused command-line utilities for everyday development.
+</p>
 
-## The problem it solves
+<p align="center">
+  <a href="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/envguard.yml"><img src="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/envguard.yml/badge.svg?branch=main" alt="EnvGuard CI" /></a>
+  <a href="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/mcp-tools.yml"><img src="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/mcp-tools.yml/badge.svg?branch=main" alt="MCP Toolbox CI" /></a>
+  <a href="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/portpilot.yml"><img src="https://github.com/erfmollaey/infinite-toolbox/actions/workflows/portpilot.yml/badge.svg?branch=main" alt="PortPilot CI" /></a>
+  <img src="https://img.shields.io/badge/license-MIT%20per%20tool-blue.svg" alt="MIT license per tool" />
+</p>
 
-Developer teams accumulate small utilities — scripts to check configuration, quick audits, local helpers — that are either glued into private repositories or reinvented per project. Infinite Toolbox packages these helpers as consistent, well-tested command-line tools that:
+<p align="center">
+  <a href="#the-toolbox">Tools</a> ·
+  <a href="#design-principles">Principles</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#technology">Technology</a> ·
+  <a href="#contributing">Contributing</a> ·
+  <a href="#license">License</a>
+</p>
 
-- work **locally**, without API keys, accounts, network access, or paid services;
-- are small enough to understand and contribute to in one sitting;
-- can be adopted one tool at a time, without adopting the whole collection.
+---
 
-## Principles
+## Overview
 
-- **Genuine utility.** A tool must do something developers currently do by hand — not merely wrap an existing command.
-- **Small and focused.** Minimal dependencies, a narrow scope, and output you can read without scrolling.
-- **Local-first and private.** Core functionality runs on your machine. No telemetry, no uploads.
-- **Security-conscious.** Tools that touch secrets treat them carefully by construction, not by convention.
-- **Independent lifecycle.** Each tool lives in its own directory with its own version, tests, and README.
-- **Honest documentation.** Implemented features are documented as implemented; planned ones are labeled as planned.
+**Infinite Toolbox** is a single repository for small, dependable developer tools, each solving one recurring problem well. Every tool runs locally, ships with tests, and can be adopted — or released — on its own.
 
-## Audience
+No platform account. No API key. No background service. Just a command you can run when something in your development environment is off.
 
-Individual developers, full-stack and backend engineers, DevOps practitioners, and small engineering teams who want focused tooling without heavyweight platforms.
+The collection currently contains three tools:
 
-## Tools
-
-| Tool | Status | Description |
+| Tool | What it fixes | Runtime |
 | --- | --- | --- |
-| [**EnvGuard**](envguard/README.md) | ✅ Released — v0.1.0 (PyPI pending) | Local-first CLI that inspects environment-variable configuration: missing variables, stale templates, `NEXT_PUBLIC_*` exposure, and `.env` files accidentally tracked by Git. |
-| [**Infinity MCP Toolbox**](mcp-tools/README.md) | ✅ Release Candidate — v0.1.0 | TypeScript MCP server providing four read-only project-inspection tools for AI assistants and MCP-compatible clients. |
+| 🛡️ [**EnvGuard**](envguard/) | Environment configuration mistakes: missing variables, stale templates, tracked `.env` files, exposed `NEXT_PUBLIC_*` values | Python 3.12+ |
+| 🧰 [**Infinity MCP Toolbox**](mcp-tools/) | AI assistants that cannot see your project's structure, Git state, environment templates, or dependencies | Node.js 18+ |
+| 🚢 [**PortPilot**](portpilot/) | `EADDRINUSE`: which process owns a port, and how to free it without killing the wrong thing | Node.js 18+ |
 
-> **Available today:** EnvGuard and Infinity MCP Toolbox (release candidate). MCP Toolbox is technically approved for release but not yet published to npm.
+## Why Infinite Toolbox
 
-## EnvGuard
+Most projects accumulate the same little helpers: a script that checks `.env`, a one-off audit for a forgotten port, a snippet that gives an AI assistant repository context. They live in private gists, get rewritten per project, and are never tested.
 
-EnvGuard answers three questions without you grepping the whole codebase:
+Infinite Toolbox gives those helpers a home with consistent standards:
 
-1. Which environment variables does my code **require**, and which are missing?
-2. Which variables in my template are **stale or unused**?
-3. Is a real `.env` file **tracked by Git** — i.e. already in my history?
+- **One problem per tool.** Narrow scope, readable output, no configuration ceremony.
+- **Local-first by default.** Core functionality does not require a network, account, or paid service. No telemetry, no uploads.
+- **Safe by construction.** Tools that touch secrets, processes, or repositories are designed to fail closed.
+- **Tested, not promised.** Each tool has its own suite and CI workflow, and its README states what is verified and what is not.
+- **Independent lifecycle.** Separate directories, manifests, versions, and licenses — adopt one tool without adopting the rest.
+
+## The Toolbox
+
+### 🛡️ [EnvGuard](envguard/)
+
+**Environment configuration, verified before it breaks a deploy.**
+
+EnvGuard inspects the environment variables your code actually references and compares them with your `.env` and template files. It also flags real `.env` files that Git is tracking and variables in the `NEXT_PUBLIC_*` namespace that would ship to the browser bundle.
 
 ```console
 $ envguard check
@@ -48,91 +68,198 @@ $ envguard check
 Summary: 2 error(s), 1 warning(s), 1 info
 ```
 
-Full documentation, usage examples, and security notes: [`envguard/README.md`](envguard/README.md).
+- Five commands: `check`, `init`, `sync`, `scan`, `doctor`.
+- Never prints environment **values** — only names, counts, paths, and line numbers.
+- Supports Python, JavaScript/TypeScript, and Next.js reference patterns.
+- Machine-readable `check --json` output and CI-friendly exit codes with `--strict`.
+- `sync` is a dry run unless `--apply` is passed; write operations never follow symlinks.
 
-## Infinity MCP Toolbox
+<sub>**Requirements:** Python 3.12+ · Typer + Rich · Git optional · [Documentation](envguard/README.md) · [Source](envguard/)</sub>
 
-Infinity MCP Toolbox is a TypeScript MCP server that exposes four read-only tools to AI assistants and MCP-compatible clients (OpenCode, Cursor, etc.):
+### 🧰 [Infinity MCP Toolbox](mcp-tools/)
 
-1. **`infinity_project_doctor`** — Analyzes project structure, detects project type, and identifies missing recommended files.
-2. **`infinity_git_context`** — Returns structured Git information: branch, working-tree status, diff stats, and recent commits (secrets redacted).
-3. **`infinity_environment_inspector`** — Inspects environment configuration templates without exposing any values.
-4. **`infinity_dependency_inspector`** — Analyzes dependency declarations from `package.json` and `requirements.txt` without installing anything.
+**Four developer tools. One read-only MCP server for your AI assistant.**
 
-All tools are strictly read-only, operate within workspace boundaries, and never expose secrets. Git subprocesses use fixed arguments with `shell: false` and bounded output.
+A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes structured project context to MCP-compatible clients: project structure, Git state, environment templates, and dependency manifests.
 
-Full documentation, installation, and security notes: [`mcp-tools/README.md`](mcp-tools/README.md).
+| Tool | Purpose |
+| --- | --- |
+| 🩺 `infinity_project_doctor` | Project layout and missing recommended files |
+| 🌿 `infinity_git_context` | Branch, working-tree status, diff stats, recent commits |
+| 🔐 `infinity_environment_inspector` | Environment templates without exposing values |
+| 📦 `infinity_dependency_inspector` | `package.json` and `requirements.txt` parsing without installing anything |
 
-## Repository structure
+- Strictly read-only operations inside workspace boundaries.
+- Secret redaction for environment values and diff output.
+- Git subprocesses use fixed arguments, `shell: false`, and bounded output.
+- Published on npm and installable through npx; also runnable from source.
 
-```text
-infinite-toolbox/
-├── README.md            # this file — collection overview
-├── .github/
-│   └── workflows/       # CI and release workflows
-├── envguard/            # Tool 1: EnvGuard (Python CLI)
-│   ├── README.md
-│   ├── pyproject.toml
-│   ├── src/envguard/
-│   └── tests/
-└── mcp-tools/           # Tool 2: Infinity MCP Toolbox (TypeScript)
-    ├── README.md
-    ├── package.json
-    ├── src/
-    └── tests/
+<sub>**Requirements:** Node.js 18+ · TypeScript · MCP STDIO · [Documentation](mcp-tools/README.md) · [Source](mcp-tools/)</sub>
+
+### 🚢 [PortPilot](portpilot/)
+
+**Find out what owns a port — and free it only when it is safe.**
+
+PortPilot replaces `lsof` archaeology and blind `kill -9` with an inspection-and-termination workflow for local TCP ports. It shows the PID, process name, address, and available details, then optionally terminates the listener behind explicit confirmations.
+
+```console
+$ portpilot 3000
+! Port 3000 is occupied by 1 process:
+  node (PID 1234)
+    TCP 127.0.0.1:3000
+
+What would you like to do?
+  1) Inspect process details
+  2) Free the port
+  3) Cancel
+>
 ```
 
-Each tool is a self-contained directory with its own packaging configuration, so tools can be developed, tested, and released independently while sharing one repository.
+- `list`, `find <port>`, `inspect <port>`, `free <port>`, and `portpilot <port>`.
+- Native discovery on macOS (`lsof`/`netstat`), Linux (`lsof`/`/proc`), and Windows (`netstat`/`tasklist`/PowerShell).
+- Every termination revalidates the captured start-time marker, so a recycled PID is refused.
+- Graceful termination first; force termination always needs a second confirmation. No privilege escalation.
+- Inspection keeps working when Windows CIM is slow or unavailable; termination refuses without a verifiable start-time marker.
 
-## Prerequisites
+<sub>**Requirements:** Node.js 18+ · No runtime dependencies · [Documentation](portpilot/README.md) · [Source](portpilot/)</sub>
 
-- **Python 3.12+** (developed and tested on 3.14) — for EnvGuard
-- **Node.js 18+** — for Infinity MCP Toolbox
-- **Git** — optional; enables Git exposure checks in EnvGuard
+## How the tools fit together
 
-## Development
+```mermaid
+flowchart LR
+    DEV["👩‍💻 Developer"]
 
-### EnvGuard (Python)
+    DEV --> EG["🛡️ EnvGuard<br/>configuration"]
+    DEV --> MCP["🧰 MCP Toolbox<br/>project context"]
+    DEV --> PP["🚢 PortPilot<br/>port ownership"]
+
+    EG --> ENVF["Environment files<br/>and source references"]
+    MCP --> AIC["AI assistant / MCP client"]
+    PP --> OSL["OS listeners<br/>and processes"]
+
+    AIC --> PROJ["Project files · Git · manifests"]
+```
+
+Each tool is independent. They share a philosophy — read-only where possible, explicit about limits, and local-first — not a runtime or a daemon.
+
+## Design principles
+
+| Principle | What it means in practice |
+| --- | --- |
+| 🎯 Genuine utility | A tool exists because developers already do the task by hand. |
+| 🪶 Small footprint | Minimal dependencies, short output, no build system of its own. |
+| 🔒 Local and private | No telemetry or uploads; secrets are handled by construction. |
+| 🧪 Verification over claims | Behavior changes come with tests; unsupported platforms are labeled. |
+| 📦 Independent releases | Every directory has its own manifest, version, and license. |
+
+## Quick start
+
+Clone the repository once, then work inside the tool you need:
+
+```bash
+git clone https://github.com/erfmollaey/infinite-toolbox.git
+cd infinite-toolbox
+```
+
+**EnvGuard**
 
 ```bash
 cd envguard
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-envguard --help
-
-# Tests
-pytest
-ruff check src tests
-ruff format src tests --check
-mypy src tests
+envguard check
 ```
 
-### Infinity MCP Toolbox (Node.js / TypeScript)
+**Infinity MCP Toolbox**
 
 ```bash
 cd mcp-tools
 npm ci
 npm run build
-npm start
-
-# Quality checks
-npm test
-npm run typecheck
-npm run lint
+npm start                        # MCP server over STDIO
 ```
+
+**PortPilot**
+
+```bash
+cd portpilot
+npm ci
+npm run build
+node cli.js --help
+```
+
+> **Distribution status:** [EnvGuard](https://pypi.org/project/infinity-envguard/) is published on PyPI with a [GitHub Release](https://github.com/erfmollaey/infinite-toolbox/releases). [Infinity MCP Toolbox](https://www.npmjs.com/package/infinity-mcp-toolbox) is published on npm. [PortPilot](portpilot/) is not yet published — install it from this repository.
+
+## Repository structure
+
+```text
+infinite-toolbox/
+├── README.md                 # this file — collection overview
+├── public/
+│   └── Infinite Toolbox logo.webp
+├── .github/
+│   └── workflows/            # per-tool CI and release workflows
+├── envguard/                 # 🛡️ Python CLI — environment configuration
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── src/envguard/
+│   └── tests/
+├── mcp-tools/                # 🧰 TypeScript MCP server — project inspection
+│   ├── README.md
+│   ├── package.json
+│   ├── src/
+│   └── tests/
+└── portpilot/                # 🚢 TypeScript CLI — TCP port processes
+    ├── README.md
+    ├── BUILD.md
+    ├── package.json
+    ├── src/
+    └── tests/
+```
+
+Each directory is a self-contained project. There is no shared root package manifest and no workspace lockfile coupling the tools together.
+
+## Technology
+
+| Tool | Language | Key libraries | Tests | Packaging |
+| --- | --- | --- | --- | --- |
+| EnvGuard | Python 3.12+ | Typer, Rich | pytest, ruff, mypy | PyPI + GitHub Release |
+| MCP Toolbox | TypeScript | MCP SDK, Zod | Vitest, ESLint, Prettier | npm / npx |
+| PortPilot | TypeScript (CommonJS) | Node built-ins only | Node test runner, ESLint, Prettier | npm / `bin` (unpublished) |
+
+Continuous integration is defined per tool in `.github/workflows/`. PortPilot and MCP Toolbox test across Node.js versions; EnvGuard tests across Python 3.12–3.14.
 
 ## Contributing
 
-- **Bugs and ideas:** open an issue describing the problem, a minimal reproduction where possible, and the tool it affects.
-- **Changes:** keep pull requests small and scoped to one tool; include tests for behavior changes; never commit real secrets, credentials, or real `.env` files — fixtures must use made-up placeholder values.
-- **New tools:** discuss the problem and the scope first; a tool belongs here when it solves one recurring developer problem well, offline, and with a small footprint.
+Contributions, bug reports, and ideas are welcome.
+
+1. **Open an issue** describing the problem, the affected tool, and a minimal reproduction where possible.
+2. **Keep pull requests scoped** to one tool. Include tests for behavior changes.
+3. **Never commit real secrets.** Fixtures must use obvious placeholder values, and no `.env` file containing real credentials should enter the repository.
+4. **New tools:** discuss the problem and scope first. A tool belongs here when it solves one recurring developer problem, runs offline, and stays small.
+
+Repository: [erfmollaey/infinite-toolbox](https://github.com/erfmollaey/infinite-toolbox) · Issues: [github.com/erfmollaey/infinite-toolbox/issues](https://github.com/erfmollaey/infinite-toolbox/issues)
 
 ## License
 
-Each tool in this monorepo has its own license. See the respective `LICENSE` files:
+Each tool carries its own MIT license:
 
-- EnvGuard: [`envguard/LICENSE`](envguard/LICENSE) (MIT)
-- Infinity MCP Toolbox: [`mcp-tools/LICENSE`](mcp-tools/LICENSE) (MIT)
+- EnvGuard — [`envguard/LICENSE`](envguard/LICENSE)
+- Infinity MCP Toolbox — [`mcp-tools/LICENSE`](mcp-tools/LICENSE)
+- PortPilot — [`portpilot/LICENSE`](portpilot/LICENSE)
 
-> This is a monorepo. Other tools (when they exist) may have their own license terms.
+The presence of a license file in one tool's directory does not imply license terms for another tool.
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ by Infinity™</strong>
+  <br />
+  <sub>Tools that make development smarter.</sub>
+</p>
+
+<p align="center">
+  <a href="https://github.com/erfmollaey/infinite-toolbox">Repository</a> ·
+  <a href="https://teaminfinity.ir">Infinity™</a>
+</p>

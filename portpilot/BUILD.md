@@ -74,6 +74,7 @@ portpilot/
 │   ├── prompt.test.js
 │   ├── discovery.test.js
 │   ├── termination.test.js
+│   ├── windows-identity.test.js
 │   └── cli.test.js
 ├── dist/                          # Generated, gitignored, shipped in npm package
 ├── eslint.config.mjs
@@ -120,7 +121,10 @@ load the compiled output directly.
    termination after graceful failure, a refused graceful signal that still
    requires a second confirmation, permission errors, PID reuse, exited
    processes, and refusal to kill PID 1 or PortPilot itself.
-6. **CLI smoke tests** (`cli.test.js`) — help/version, invalid input, free and
+6. **Windows identity** (`windows-identity.test.js`) — CIM timeout fallback to
+   `tasklist`, missing start-time markers, and fail-closed refusal to terminate
+   a target whose identity cannot be verified.
+7. **CLI smoke tests** (`cli.test.js`) — help/version, invalid input, free and
    occupied ports, `list`, and non-interactive `free` refusal.
 
 The integration tests only signal child processes they started on ephemeral
@@ -136,7 +140,7 @@ by prompt unit tests and the termination tests, which inject confirm decisions.
 | --- | --- | --- |
 | macOS | lsof, netstat fallback | End-to-end (discovery, inspection, termination, CLI) |
 | Linux | lsof, `/proc` fallback | End-to-end in a Node 24 Alpine container with `procps` + `lsof`: the full suite passed, including the `/proc` integration test |
-| Windows | netstat/tasklist, PowerShell fallback | Parser tests only; cross-platform CI is configured but has not produced a Windows run in this repository yet |
+| Windows | netstat/tasklist, PowerShell fallback | Parser and identity-fallback tests; the previously tested commit passed the full CI matrix (Windows Node 18 and 24 — 8/8 jobs in run `44809778797`). The current uncommitted changes have not yet run through CI. |
 
 Windows command-line inspection requires PowerShell (`Get-CimInstance`); without
 it, names come from `tasklist` and command lines are omitted. Windows often

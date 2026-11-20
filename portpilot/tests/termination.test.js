@@ -313,7 +313,7 @@ test("targets captured without a start-time marker are refused", async () => {
   };
 
   const report = await terminateProcess(
-    { pid: 1234, name: "node.exe" },
+    { pid: 1234, name: "node.exe", startTime: undefined },
     {
       confirm: async () => {
         confirmations += 1;
@@ -369,7 +369,7 @@ test("exited processes are reported as already gone", async () => {
   };
 
   const report = await terminateProcess(
-    { pid: 1234, name: "node" },
+    { pid: 1234, name: "node", startTime: undefined },
     {
       confirm: async () => {
         confirmations += 1;
@@ -394,13 +394,13 @@ test("PID 1 and PortPilot itself are always refused", async () => {
   };
 
   const init = await terminateProcess(
-    { pid: 1, name: "init" },
+    { pid: 1, name: "init", startTime: undefined },
     { confirm: async () => true, forceConfirm: async () => true, ops },
   );
   assert.equal(init.status, "refused");
 
   const self = await terminateProcess(
-    { pid: process.pid, name: "node" },
+    { pid: process.pid, name: "node", startTime: undefined },
     { confirm: async () => true, forceConfirm: async () => true, ops },
   );
   assert.equal(self.status, "refused");

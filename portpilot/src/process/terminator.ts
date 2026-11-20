@@ -11,11 +11,13 @@ export interface TerminationTarget {
   pid: number;
   name: string;
   /**
-   * Start-time marker captured during inspection. Termination is refused
-   * when it is absent, because neither the PID nor the process name can rule
-   * out reuse on its own.
+   * Start-time marker captured during inspection, or `undefined` when the
+   * platform could not provide one. The property is required so every caller
+   * states that marker explicitly; termination is refused when it is
+   * undefined, because neither the PID nor the process name can rule out
+   * reuse on its own.
    */
-  startTime?: string;
+  startTime: string | undefined;
 }
 
 export interface ProcessOps {
