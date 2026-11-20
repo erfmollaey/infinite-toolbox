@@ -27,7 +27,7 @@
     "build": "tsc",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test": "node --test tests/validator.test.js tests/parsers.test.js tests/prompt.test.js tests/discovery.test.js tests/termination.test.js tests/cli.test.js",
+    "test": "node --test tests/validator.test.js tests/parsers.test.js tests/prompt.test.js tests/discovery.test.js tests/termination.test.js tests/windows-identity.test.js tests/cli.test.js",
     "test:unit": "node --test tests/validator.test.js tests/parsers.test.js",
     "test:integration": "node --test tests/discovery.test.js tests/termination.test.js",
     "lint": "eslint .",

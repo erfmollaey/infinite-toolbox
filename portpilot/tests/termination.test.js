@@ -270,6 +270,96 @@ test("PID reuse is refused before any signal is sent", async () => {
   assert.equal(signals, 0);
 });
 
+test("name-only identities cannot confirm a start-time marker", async () => {
+  let signals = 0;
+  let confirmations = 0;
+  const ops = {
+    isAlive: async () => true,
+    // Shape of the Windows tasklist fallback when CIM times out: the name is
+    // known, but there is no start-time marker to compare against.
+    getIdentity: async (pid) => ({ pid, name: "node.exe" }),
+    terminate: async () => {
+      signals += 1;
+    },
+  };
+
+  const report = await terminateProcess(
+    { pid: 1234, name: "node.exe", startTime: "original-start-time" },
+    {
+      confirm: async () => {
+        confirmations += 1;
+        return true;
+      },
+      forceConfirm: async () => true,
+      ops,
+    },
+  );
+
+  assert.equal(report.status, "refused");
+  assert.match(report.message, /start time/i);
+  assert.equal(confirmations, 0);
+  assert.equal(signals, 0);
+});
+
+test("targets captured without a start-time marker are refused", async () => {
+  let signals = 0;
+  let confirmations = 0;
+  const ops = {
+    isAlive: async () => true,
+    getIdentity: async (pid) => ({ pid, name: "node.exe" }),
+    terminate: async () => {
+      signals += 1;
+    },
+  };
+
+  const report = await terminateProcess(
+    { pid: 1234, name: "node.exe" },
+    {
+      confirm: async () => {
+        confirmations += 1;
+        return true;
+      },
+      forceConfirm: async () => true,
+      ops,
+    },
+  );
+
+  assert.equal(report.status, "refused");
+  assert.match(report.message, /no start-time marker/i);
+  assert.match(report.message, /manually/i);
+  assert.equal(confirmations, 0);
+  assert.equal(signals, 0);
+});
+
+test("a matching start-time marker still permits termination", async () => {
+  let signals = 0;
+  const ops = {
+    isAlive: async () => signals === 0,
+    getIdentity: async (pid) => ({
+      pid,
+      name: "node.exe",
+      startTime: "same-start-time",
+    }),
+    terminate: async () => {
+      signals += 1;
+    },
+  };
+
+  const report = await terminateProcess(
+    { pid: 1234, name: "node.exe", startTime: "same-start-time" },
+    {
+      confirm: async () => true,
+      forceConfirm: async () => true,
+      ops,
+      graceTimeoutMs: 100,
+      pollIntervalMs: 10,
+    },
+  );
+
+  assert.equal(report.status, "terminated");
+  assert.equal(signals, 1);
+});
+
 test("exited processes are reported as already gone", async () => {
   let confirmations = 0;
   const ops = {

@@ -10,6 +10,11 @@ import { getProcessIdentity } from "./inspector";
 export interface TerminationTarget {
   pid: number;
   name: string;
+  /**
+   * Start-time marker captured during inspection. Termination is refused
+   * when it is absent, because neither the PID nor the process name can rule
+   * out reuse on its own.
+   */
   startTime?: string;
 }
 
@@ -209,11 +214,30 @@ async function revalidate(
     };
   }
 
-  if (
-    target.startTime &&
-    identity.startTime &&
-    target.startTime !== identity.startTime
-  ) {
+  // Without a marker captured at inspection time there is nothing to compare
+  // against, so a recycled PID would look identical to the original process.
+  // This happens on Windows when the CIM lookup times out during inspection.
+  if (!target.startTime) {
+    return {
+      ok: false,
+      status: "refused",
+      message: `Could not verify the identity of PID ${target.pid}: no start-time marker was captured (the Windows CIM lookup may have timed out). Refusing to terminate it. Stop the process manually, or re-run PortPilot once CIM is available.`,
+    };
+  }
+
+  // The target was captured with a start-time marker, so reuse can only be
+  // ruled out by comparing that marker. A fresh identity without one (for
+  // example the tasklist fallback after a CIM timeout on Windows) is not
+  // enough: the name alone cannot prove this is still the same process.
+  if (!identity.startTime) {
+    return {
+      ok: false,
+      status: "refused",
+      message: `Could not verify the start time of PID ${target.pid}; refusing to terminate it`,
+    };
+  }
+
+  if (target.startTime !== identity.startTime) {
     return {
       ok: false,
       status: "refused",

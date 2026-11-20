@@ -245,6 +245,8 @@ async function windowsIdentity(pid: number): Promise<ProcessIdentity | null> {
     }
   }
 
+  // tasklist can still confirm the name after a CIM timeout, but it has no
+  // start-time marker. Termination treats that as unverifiable identity.
   return windowsTasklistIdentity(pid);
 }
 
