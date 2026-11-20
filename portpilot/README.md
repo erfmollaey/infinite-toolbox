@@ -71,7 +71,11 @@ Only **TCP listeners** are discovered. UDP ports are not listed.
 
 ## Installation
 
-PortPilot is version `0.1.0` and is currently installed from this repository. It is **not published to npm yet**.
+PortPilot is version `0.1.0` and is published to npm as `infinity-portpilot`.
+
+```bash
+npm install -g infinity-portpilot
+```
 
 ```bash
 cd portpilot
@@ -88,6 +92,17 @@ portpilot list
 ```
 
 Once published, the package exposes a `portpilot` binary through its `bin` entry.
+
+## Publishing
+
+This project uses GitHub Actions and npm Trusted Publishing to publish new releases.
+
+- **Trigger**: A GitHub tag matching `portpilot-vX.Y.Z` triggers the publish workflow.
+- **Validation**: The workflow validates that the tag version exactly matches `portpilot/package.json` and that the package name is `infinity-portpilot`.
+- **Process**: The tagged commit is checked out, dependencies are installed, type checks, lint, format checks, and tests all pass, then `npm pack --dry-run` is verified, and finally the package is published publicly via `npm publish --access public` using OIDC (npm Trusted Publishing).
+- **Manual publishing**: The workflow can also be triggered manually via `workflow_dispatch`, where you specify the existing release tag to publish.
+
+Future releases use tags named `portpilot-vMAJOR.MINOR.PATCH` (e.g., `portpilot-v0.1.0`, `portpilot-v1.2.3`). The npm package automatically generates provenance metadata through Trusted Publishing.
 
 ## Quick start
 
@@ -379,7 +394,7 @@ See [BUILD.md](BUILD.md) for packaging details and troubleshooting.
 ## Limitations
 
 - Only TCP listeners are supported.
-- The tool is not published to npm; install from this repository.
+- The tool is published to npm as `infinity-portpilot`; install with `npm install -g infinity-portpilot`.
 - Windows support has fixture-test coverage and passed the full CI matrix, including Windows Node 18 and 24, on the previously tested commit. The current uncommitted changes have not yet been validated by CI.
 - Processes owned by other users may not expose their PID or command line, and PortPilot will not elevate privileges to find out.
 - Ports can change between discovery and termination; revalidation reduces, but cannot eliminate, that race.
